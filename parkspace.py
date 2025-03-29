@@ -25,5 +25,12 @@ async def book_parkspace(r: Request):
         return json_response({}, status=404)
     return json_response(data = session.get(db.ParkingSpace, int(r.match_info('id'))).as_dict())
 
+@router.get('/free')
+async def list_free_parkspaces(r: Request):
+    data = [x.as_dict() for x in session.query(db.ParkingSpace).filter(db.ParkingSpace.__status == Statuses.FREE).all()]
+    return json_response(data)
+
+
+
 app = web.Application()
 app.add_routes(router)
