@@ -8,3 +8,7 @@ class Statuses:
     FREE = 'FREE'
     BOOKED = 'BOOKED'
     IN_USE = 'IN_USE'
+
+class BookingType:
+    RESERVATION = 'RESERVATION'
+    BOOKING = 'BOOKING'

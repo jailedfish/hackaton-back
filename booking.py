@@ -1,71 +1,52 @@
-from parkspace import *
+from aiohttp.web import RouteTableDef, Request, json_response
+from aiohttp import web
+import models as db
+from datetime import datetime
+from enums import Statuses
+from models import session, redis
+from auth import token_auth, extract_token
 
-@router.patch('/{id:\\d{,4}}/book')
-async def reserve_parkspace(r: Request): 
-    try:
-        data = await r.json()
-        reserve_time = datetime.strptime(data.get('start_date', ''), "%d/%m/%y %H:%M")
-        end_time = datetime.strptime(data.get('end_date', ''), "%d/%m/%y %H:%M")
-        if reserve_time < datetime.now():
-            raise ValueError
-    except ValueError as e:
-        print(e)
-        return json_response({'message': 'wrong date recieved'}, status=400)
-    
-    guest = session.get(db.User, int(data.get('id', '')))
-    if not token_auth(guest, extract_token(r)):
-        return json_response({'message': 'Bearer Token Required'}, status=401)
-    
-    affected = session.query(db.ParkingSpace).filter(db.ParkingSpace.id == int(r.match_info['id'])).update({db.ParkingSpace._status: Statuses.BOOKED})
+router = RouteTableDef()
 
-    if affected == 0:
-        return json_response({}, status=404)
-    data = session.query(db.ParkingSpace).filter(db.ParkingSpace.id == int(r.match_info['id'])).one()
-    data.booker_id = guest.id
-    data._status = Statuses.BOOKED
-    session.add(data)
-    session.commit()
-    redis.set(f'booking_1_{guest.id}', int(r.match_info['id']), (end_time - datetime.now()).total_seconds())
-    return json_response(data.as_dict())
-
-
-@router.patch('/{id:\\d{,4}}/reserve')
-async def reserve_parkspace(r: Request):
-    try:
-        data = await r.json()
-        reserve_time: datetime = datetime.strptime(data.get('start_date', ''), "%d/%m/%y %H:%M")
-        end_time = datetime.strptime(data.get('end_date', ''), "%d/%m/%y %H:%M")
-        if reserve_time < datetime.now():
-            raise ValueError
-    except ValueError as e:
-        print(e)
-        return json_response({'message': 'wrong date recieved'}, status=400)
-    
-    owner = session.get(db.User, int(data.get('id', '')))
-    guest = session.get(db.User, int(data.get('guest_id', '')))
-    if not token_auth(owner, extract_token(r)):
-        return json_response({'message': 'Bearer Token Required'}, status=401)
-    
-    affected = session.query(db.ParkingSpace).filter(db.ParkingSpace.id == int(r.match_info['id'])) \
-        .filter(db.ParkingSpace.owner_id == owner.id).update({db.ParkingSpace._status: Statuses.BOOKED})
-
-    if affected == 0:
-        return json_response({'message': 'Parking space not found or place isn\'t your'}, status=404)
-    
-    data = session.query(db.ParkingSpace).filter(db.ParkingSpace.id == int(r.match_info['id'])).one()
-    data.booker_id = guest.id
-    data._status = Statuses.BOOKED
-
-    session.add(data)
-    session.commit()
-    
-    redis.set(f'booking_{owner.id}_{guest.id}', int(r.match_info['id']), (end_time - datetime.now()).total_seconds())
-    return json_response(data.as_dict())
-
-@router.get('/{id:\\d{,4}}/booking')
+@router.get('/{id:\\d{,4}}')
 async def get_booking(r: Request):
+    data = session.query(db.Booking).filter(db.Booking.id == int(r.match_info['id'])).one_or_none()
     
+    if data is None:
+        return json_response({'message': 'booking not found, is it exists?'}, status=404)
     
+    if not (await token_auth(data.booker, extract_token(r))) or not (await token_auth(data.landlord, extract_token(r))):
+        return json_response({'message': 'Invalid token'}, status=401)
+    
+    return json_response(data.as_dict())
+
+@router.delete('/{id:\\d{,4}}')
+async def cancel_booking(r: Request):
+    data = session.query(db.Booking).filter(db.Booking.id == int(r.match_info['id'])).one_or_none()
+
+    if data is None:
+        return json_response({'message': 'booking not found, is it exists?'}, status=404)
+    
+    if not (await token_auth(data.booker, extract_token(r))) or not (await token_auth(data.landlord, extract_token(r))):
+        return json_response({'message': 'Invalid token'}, status=401)
+    session.delete(data)
+    session.commit()
+    
+    return json_response(data.as_dict())
+    
+
+@router.get('/by_user/{id:\\d{,4}}')
+async def get_booking(r: Request):
+    data = session.query(db.Booking).filter(db.Booking.landlord_id == int(r.match_info['id']) \
+                                            or db.Booking.booker_id == int(r.match_info['id'])).one_or_none()
+    
+    if data is None:
+        return json_response({'message': 'booking not found, is it exists?'}, status=404)
+    
+    if not (await token_auth(data.booker, extract_token(r))) or not (await token_auth(data.landlord, extract_token(r))):
+        return json_response({'message': 'Invalid token'}, status=401)
+    
+    return json_response(data.as_dict())
 
 app = web.Application()
 app.add_routes(router)

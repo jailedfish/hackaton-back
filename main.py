@@ -4,7 +4,8 @@ import models as db
 import asyncio
 from enums import Statuses
 from models import session
-from booking import app as park_subapp
+from parkspace import app as park_subapp
+from booking import app as booking_app
 from users import app as user_subapp
 import logging
 from aiohttp.web import middleware
@@ -18,6 +19,7 @@ async def logging_middleware(r: Request, handler):
 app = web.Application(middlewares=[logging_middleware])
 app.add_subapp('/parkspace/', park_subapp)
 app.add_subapp('/user/', user_subapp)
+app.add_subapp('/booking/', booking_app)
 
 web.run_app(app)
 
