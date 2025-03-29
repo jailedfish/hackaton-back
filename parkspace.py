@@ -33,7 +33,7 @@ async def list_free_parkspaces(r: Request):
 async def get_ex(r: Request):
     keys = redis.keys("booking_*_*")
     for i, key in enumerate(keys):
-        if redis.get(key) == int(r.match_info['id']):
+        if str(redis.get(key)) == int(r.match_info['id']):
             return json_response({'ex': redis.expiretime(key[i])})
     return json_response({'message': 'Nothing was found, is it booked?'}, status=404)
 
@@ -54,13 +54,16 @@ async def book_parkspace(r: Request):
     if not token_auth(guest, extract_token(r)):
         return json_response({'message': 'Bearer Token Required'}, status=401)
     
+    if guest.balance < 0:
+        return json_response({'message': 'Balance is negative :('}, status=402)
+    
     affected = session.query(db.ParkingSpace).filter(db.ParkingSpace.id == int(r.match_info['id'])).update({db.ParkingSpace._status: Statuses.BOOKED})
 
     if affected == 0:
         return json_response({}, status=404)
     data = session.query(db.ParkingSpace).filter(db.ParkingSpace.id == int(r.match_info['id'])).one()
     data._status = Statuses.BOOKED
-    booking = db.Booking(landlord_id=1, _type=BookingType.BOOKING, booker_id=guest.id, start_at=reserve_time, end_at=end_time)
+    booking = db.Booking(landlord_id=1, _type=BookingType.BOOKING, booker_id=guest.id, start_at=reserve_time, end_at=end_time, price=PRICE)
     session.add(data)
     session.add(booking)
     session.commit()
@@ -93,7 +96,7 @@ async def reserve_parkspace(r: Request):
     
     data = session.query(db.ParkingSpace).filter(db.ParkingSpace.id == int(r.match_info['id'])).one()
     data._status = Statuses.BOOKED
-    booking = db.Booking(landlord_id=owner.id, _type=BookingType.BOOKING, booker_id=guest.id, start_at=reserve_time, end_at=end_time)
+    booking = db.Booking(landlord_id=owner.id, _type=BookingType.BOOKING, booker_id=guest.id, start_at=reserve_time, end_at=end_time, price=0)
     session.add(data)
     session.add(booking)
     session.commit()

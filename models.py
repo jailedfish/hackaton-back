@@ -16,6 +16,7 @@ class User(Base):
     __tablename__ = 'user'
     login: Mapped[str] = mapped_column(nullable=False, unique=True)
     password_hash: Mapped[str] = mapped_column(nullable=False)
+    balance: Mapped[int] = mapped_column(nullable=False, server_default="0")
     car_number: Mapped[str] = mapped_column(nullable=False, unique=True)
 
     def as_dict(self):
@@ -35,6 +36,7 @@ class ParkingSpace(Base):
     
 class Booking(Base):
     __tablename__ = 'booking'
+    price: Mapped[int] = mapped_column(nullable=False, server_default="0")
     parking_space_id: Mapped[int] = mapped_column(ForeignKey('parkspace.id'), nullable=False)
     parking_space: Mapped[ParkingSpace] = relationship(foreign_keys=[parking_space_id])
     booker_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False)
@@ -45,9 +47,19 @@ class Booking(Base):
     start_at: Mapped[datetime] = mapped_column(nullable=False)
     end_at: Mapped[datetime] = mapped_column(nullable=False)
 
+    get_price = lambda x: x/100.0
+
     def as_dict(self):
         return {'type': self._type, 'booker': self.booker.as_dict(), 'landlord': self.landlord.as_dict(), 'start_at': self.start_at, 'end_at': self.end_at, 'parking_space': self.parking_space.as_dict()}
 
-if session.get(User, 1) is None:
-    session.add(User(login='admin', password_hash=sha3_512(b'The sun in the sky is red, The sun in my heart is Mao Zedong').hexdigest(), car_number='oo000o00'))
-    session.commit()
+try:
+    if session.get(User, 1) is None:
+        session.add(User(login='admin', password_hash=sha3_512(b'The sun in the sky is red, The sun in my heart is Mao Zedong').hexdigest(), car_number='oo000o00'))
+        session.commit()
+except:
+    pass
+#for x in range(10):
+#    for y in range(10):
+#        f = ParkingSpace(col=x, row=y, owner_id=1)
+#        session.add(f)
+#session.commit()

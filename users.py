@@ -92,5 +92,19 @@ async def get_token(r: Request):
     else:
         return json_response({'message': 'Wrong password or user not found'}, status=401)
     
+@router.patch('/balance/{id:\\d{1,}}')
+async def free_money_mod(r: Request):
+    try:
+        data = await r.json()
+    except:
+        return json_response({'message': 'invalid input'}, status=400)
+    
+    user = session.get(db.User, r.match_info['id'])
+    user.balance = int(data.get('balance', '0'))
+    session.add(user)
+    session.commit()
+    return json_response(user.as_dict())
+
+
 app = Application()
 app.add_routes(router)
