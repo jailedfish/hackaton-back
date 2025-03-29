@@ -10,7 +10,8 @@ class Base(declarative_base()):
 class User(Base):
     __tablename__ = 'user'
     login: Mapped[str] = mapped_column(nullable=False, unique=True)
-    password_hash: Mapped[str] = mapped_column(str(128), nullable=False)
+    password_hash = mapped_column(nullable=False)
+    
 
 
 class ParkingSpace(Base):
