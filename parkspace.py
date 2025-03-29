@@ -4,6 +4,7 @@ import models as db
 from datetime import datetime
 from enums import Statuses
 from models import session, redis
+from auth import token_auth, extract_token
 
 router = RouteTableDef()
 
@@ -19,15 +20,7 @@ async def get_parkspace(r: Request):
         return json_response({}, status=404)
     return json_response(data.as_dict())
 
-@router.patch('/{id:\\d{,4}}/book')
-async def book_parkspace(r: Request):
-    book_time = datetime.strptime("%Y%m%dT%H%M%S.%fZ", r.match_info['date'])
-    affected = session.query(db.ParkingSpace).filter(db.ParkingSpace.id == int(r.match_info['id'])).update({db.ParkingSpace._status: Statuses.BOOKED})
-    if affected == 0:
-        return json_response({}, status=404)
-    data = session.query(db.ParkingSpace).filter(db.ParkingSpace.id == int(r.match_info['id'])).one()
-    redis.set('')
-    return json_response(data.as_dict())
+
 
 @router.get('/free')
 async def list_free_parkspaces(r: Request):
@@ -35,5 +28,12 @@ async def list_free_parkspaces(r: Request):
     return json_response(data)
 
 
-app = web.Application()
-app.add_routes(router)
+@router.get('/{id:\\d{,4}}/ex')
+async def get_ex(r: Request):
+    keys = redis.keys("booking_*_*")
+    for i, key in enumerate(keys):
+        if redis.get(key) == int(r.match_info['id']):
+            return json_response({'ex': redis.expiretime(key[i])})
+    return json_response({'message': 'Nothing was found, is it booked?'}, status=404)
+
+

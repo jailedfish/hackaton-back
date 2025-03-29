@@ -1,6 +1,8 @@
 class Types:
-    LEASING = 'LEASING'
+    GUEST = 'GUEST'
+    BOUGHT = 'BOUGHT'
     RENTING = 'RENTING'
+    SPECIAL = 'SPECIAL'
 
 class Statuses:
     FREE = 'FREE'
