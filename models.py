@@ -1,6 +1,8 @@
 from sqlalchemy.orm import declarative_base, Mapped, mapped_column, sessionmaker
 from enums import Statuses, Types
+from redis import Redis
 
+redis = Redis('localhost')
 session = sessionmaker()()
 
 class Base(declarative_base()):
