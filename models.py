@@ -1,5 +1,7 @@
-from sqlalchemy.orm import declarative_base, Mapped, mapped_column
+from sqlalchemy.orm import declarative_base, Mapped, mapped_column, sessionmaker
 from enums import Statuses, Types
+
+session = sessionmaker()()
 
 class Base(declarative_base()):
     __abstract__ = True
@@ -8,6 +10,7 @@ class Base(declarative_base()):
 class User(Base):
     __tablename__ = 'user'
     login: Mapped[str] = mapped_column(nullable=False, unique=True)
+    password_hash = mapped_column(nullable=False)
 
 
 class ParkingSpace(Base):
