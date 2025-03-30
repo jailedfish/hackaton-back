@@ -130,5 +130,17 @@ async def cancel_booking(r: Request):
     
     return json_response(data.as_dict())
 
+@router.get('/{id:\\d{,4}}/available_numbers')
+async def get_available_numbers(r: Request):
+    data = session.query(db.Booking).filter(db.Booking.parking_space_id == int(r.match_info['id'])).one_or_none()
+
+    if data is None:
+        return json_response({'message': 'booking not found, is it exists?'}, status=404)
+    
+    if not (await token_auth(data.booker, extract_token(r))) or not (await token_auth(data.landlord, extract_token(r))):
+        return json_response({'message': 'Invalid token'}, status=401)
+    
+    return json_response([{'num': data.booker.car_number}, {'num': data.landlord.car_number}])
+
 app = web.Application()
 app.add_routes(router)
