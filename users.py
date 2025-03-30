@@ -21,15 +21,15 @@ async def create_user(r: Request):
         return json_response({'message': 'wrong input signature'}, status=400)
 
     user = db.User(login=data.get('login'), password_hash=sha3_512(data.get('password').encode()).hexdigest(), car_number=data.get('car_number').lower())
-    session.add(user)
+    
     
     try:
+        session.add(user)
         session.commit()
         return json_response(user.as_dict(), status=201)
 
     except Exception as e:
         session.rollback()
-        print(e)
         return json_response({'message': 'error detected'}, status=500)
     
 

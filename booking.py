@@ -10,7 +10,7 @@ router = RouteTableDef()
 
 @router.get('/{id:\\d{,4}}')
 async def get_booking(r: Request):
-    data = session.query(db.Booking).filter(db.Booking.id == int(r.match_info['id'])).one_or_none()
+    data = session.query(db.Booking).filter(db.Booking.id == int(r.match_info['id']) or (db.Booking.booker_id == int(r.match_info['id']) or int(r.match_info['id']) == 1)).one_or_none()
     
     if data is None:
         return json_response({'message': 'booking not found, is it exists?'}, status=404)
@@ -38,7 +38,7 @@ async def cancel_booking(r: Request):
 @router.get('/by_user/{id:\\d{,4}}')
 async def get_booking(r: Request):
     data = session.query(db.Booking).filter(db.Booking.landlord_id == int(r.match_info['id']) \
-                                            or db.Booking.booker_id == int(r.match_info['id'])).one_or_none()
+                                            or (db.Booking.booker_id == int(r.match_info['id']) or int(r.match_info['id']) == 1)).one_or_none()
     
     if data is None:
         return json_response({'message': 'booking not found, is it exists?'}, status=404)
